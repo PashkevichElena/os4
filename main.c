@@ -71,8 +71,8 @@ bool isFileNameForWrite(char *input){
     char  *fileExt;
     strtok_r(input, ".", &fileExt);
     if (fileExt != NULL) {
-        return true;
-    } else return false;
+        return false;
+    } else return true;
 
     return false;
 }
@@ -581,11 +581,34 @@ void writeFile(){
         if (activDirectory->files[i] != NULL) {
             if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
                 isFileExist = true;
-                globalI = i;
+                File *activ = activDirectory->files[i];
+                while (activ->next != NULL) {
+                    activ = activ->next;
+                }
+                for (int k = 0; k < 1024; k++) {
+
+                    if (k % 10 == 0) {
+                        File *next;
+                        if (!(next = (File *) calloc (1, sizeof (File)))) {
+                            printf ("Возникли проблемы с выделением памяти\n");
+                        }
+                        activ->next = next;
+                        next->previous = activ;
+                        activ = next;
+                    }
+                    activ->data[k % 10] = data[k];
+                    if (data[k + 1] == NULL) {
+                       for(int index = k; k<0; k--){
+                           data[index] = NULL;
+                       }
+                        break;
+                    }
+                }
                 break;
             }
         }
     }
+
     if(!isFileExist){
         for (int i = 0; i < 100; i++) {
             if (activDirectory->files[i] == NULL) {
@@ -593,34 +616,43 @@ void writeFile(){
                     printf ("Возникли проблемы с выделением памяти\n");
                 }
                 strcpy (activDirectory->files[i]->name, fileName);
-                globalI = i;
+                activDirectory->files[globalI]->next = activDirectory->files[globalI]->previous = NULL;
+                File* activ;
+                activ = activDirectory->files[globalI];
+                for (int j = 0; j<10; j++){
+                    if(data[j] == NULL){
+                        for(int index = j; j<0; j--){
+                            data[index] = NULL;
+                        }
+                        break;
+                    }
+                    activ->data[j] = data[j];
+                }
+
+                for(int k = 10 ; k < 1024; k++){
+                    if(k%10 == 0){
+                        File* next;
+                        if (!(next = (File *) calloc (1, sizeof (File)))) {
+                            printf ("Возникли проблемы с выделением памяти\n");
+                        }
+                        activ -> next = next;
+                        next -> previous = activ;
+                        activ = next;
+                    }
+                    activ -> data[k%10] = data[k];
+
+                    if(data[k+1]==NULL){
+                        for(int index = k; k<0; k--){
+                            data[index] = NULL;
+                        }
+                        break;
+                    }
+                }
                 break;
             }
         }
     }
-    activDirectory->files[ globalI]->next = activDirectory->files[globalI]->previous = NULL;
-    File* activ;
-    activ = activDirectory->files[globalI];
-    for (int j = 0; j<10; j++){
-        activ->data[j] = data[j];
-    }
-    for(int k = 10 ; k < 1024; k++){
 
-        if(data[k+1]==NULL){
-            break;
-        }
-        if(k%10 == 0){
-            File* next;
-            if (!(next = (File *) calloc (1, sizeof (File)))) {
-                printf ("Возникли проблемы с выделением памяти\n");
-            }
-            activ -> next = next;
-            next -> previous = activ;
-            activ = next;
-        }
-        activ -> data[k%10] = data[k];
-
-    }
 
 }
 
