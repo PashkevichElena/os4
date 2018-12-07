@@ -4,9 +4,9 @@
 #include <malloc.h>
 #include <stdlib.h>
 
-#define FILE_NAME "root.bin"
+char *FILE_NAME;// "root.bin"
 
-enum operation { MD, MF, RD, RF, COPY, CUT, PASTE, WRITE, READ, CD, CD_BAK, DIR, FIL, ERROR, EXIT };
+enum operation { MD, MF, RD, RF, COPY, CUT, PASTE, WRITE, READ, CD, CD_BAK, DIR,  ERROR, SAVE, EXIT };
 
 typedef struct File{
     char name[10];
@@ -24,8 +24,10 @@ typedef struct Directory{
     File* files[100];
 }Directory;
 
-
 void writeName(FILE*, char[10]);
+char* toBin(char*);
+int getTypeOfFirstWord (char*);
+int changeStringToInt(char*);
 int getNumberOfDirectories(Directory);
 void writeNumberOfDirectories(FILE*, int);
 void writeDirectories(FILE*, Directory);
@@ -33,30 +35,48 @@ int getNumberOfFiles(Directory);
 void writeNumberOfFiles(FILE*, int);
 void writeFiles(FILE*, Directory);
 
+void  makeDirectory();
+void  makeFile();
+void  removeDirectory();
+void  removeFile();
+void  copyFile();
+void  saveDamp();
+void  cutFile();
+void  pasteFile();
+void  writeFile();
+void  readFile();
+void  openDirectory();
+void  openDirectoryBack();
+void  showDirectoryList();
+void  showFileList();
+
 char* readName(FILE*);
 char* readData(FILE*);
 int readNumberOfDirectories(FILE*);
-//void readDirectories(FILE*, Directory*);
 int readNumberOfFiles(FILE*);
 void readFiles(FILE*, Directory*);
+bool isFileName(char*);
+bool isBin(char* input);
+bool isTxt(char* input);
 
-char* directoryName;
-char* fileName;
+char directoryName;
+char fileName;
 char* data;
 
 bool isDirectoryName(char* input){
     char *secondWorld;
-    strtok_r(input, " ", &secondWorld);
+    char *dirName;
+    dirName = strtok_r(input, " ", &secondWorld);
     if (secondWorld != NULL) {
         return false;
     }
 
     char  *fileExt;
-    strtok_r(input, ".", &fileExt);
+    strtok_r(dirName, ".", &fileExt);
     if (fileExt != NULL) {
         return false;
     }
-    directoryName = input;
+    strcpy(&directoryName, dirName);
     return true;
 }
 
@@ -65,8 +85,9 @@ bool isFileNameForWrite(char *input){
     strtok_r(input, " ", &secondWorld);
     if (secondWorld != NULL) {
         data = secondWorld;
+        strcpy(&fileName, input);
+        return true;
     }
-    fileName = input;
 
     char  *fileExt;
     strtok_r(input, ".", &fileExt);
@@ -78,21 +99,56 @@ bool isFileNameForWrite(char *input){
 }
 
 bool isFileName(char *input){
+  //  printf("%s", input);
+
     char *secondWorld;
+    char copi;
     strtok_r(input, " ", &secondWorld);
     if (secondWorld != NULL) {
         return false;
     }
-    fileName = input;
+    strcpy(&fileName, input);
+    strcpy(&copi, input);
 
     char  *fileExt;
-    strtok_r(input, ".", &fileExt);
+    strtok_r(&copi, ".", &fileExt);
     if (fileExt != NULL) {
+        if(!isTxt(fileExt)){
+            if(isBin(fileExt)){
+                return true;
+            } else {
+                printf("Please, check your file extension. It must be .txt or .bin\n");
+                return  false;}
+        } else return true;
+
+    } else {
+        printf("Your file without extension\n");
         return false;
-    } else return true;
+    }
 
     return false;
 }
+
+
+bool isTxt(char* input){
+    //  printf("%s", input);'
+
+        if(strcmp(input, "txt")==0){
+            return true;}
+        else return false;
+
+
+}
+
+
+bool isBin(char* input){
+
+        if(strcmp(input, "bin")==0){
+            return true;}
+        else return false;
+
+}
+
 
 bool isOnlyCommand(char *input){
     char *secondWorld;
@@ -100,36 +156,6 @@ bool isOnlyCommand(char *input){
     if (input != NULL) {
         return false;
     } else return true;
-}
-
-bool isFilePath(char *input){
-    char *secondWorld;
-    strtok_r(input, " ", &secondWorld);
-    if (secondWorld != NULL) {
-        return false;
-    }
-
-    char  *fileExt;
-    strtok_r(input, ".", &fileExt);
-    if (fileExt != NULL) {
-        return false;
-    }
-    return true;
-}
-
-bool isFilePathes(char *input){
-    char *secondWorld;
-    strtok_r(input, " ", &secondWorld);
-    if (secondWorld != NULL) {
-        return false;
-    }
-
-    char  *fileExt;
-    strtok_r(input, ".", &fileExt);
-    if (fileExt != NULL) {
-        return true;
-    } else return false;
-    return true;
 }
 
 bool isDirectoryPath(char *input){
@@ -144,7 +170,8 @@ bool isDirectoryPath(char *input){
     if (fileExt != NULL) {
         return false;
     }
-    directoryName = input;
+    strcpy( &directoryName, input);
+   // directoryName = input;
     return true;
 }
 
@@ -160,7 +187,6 @@ int getNumberOfFiles(Directory root){
 
 void writeNumberOfFiles(FILE *fileBin,  int numberOfFiles){
     int ifError = (int) fwrite(&numberOfFiles, sizeof(int), 1, fileBin);
-    printf (" number of Files %i\n", numberOfFiles);
     if(ifError == -1){
         printf ("Error with writing number of Files %i\n", numberOfFiles);
     }
@@ -169,7 +195,6 @@ void writeNumberOfFiles(FILE *fileBin,  int numberOfFiles){
 int readNumberOfFiles(FILE *fileBin){
     int numberOfFiles;
     int ifError = (int) fread(&numberOfFiles, sizeof(int), 1, fileBin);
-    printf (" number of Files %i\n", numberOfFiles);
     if(ifError == -1){
         printf ("Error with reading number of Files %i\n", numberOfFiles);
     }
@@ -197,25 +222,32 @@ void writeToFile(Directory root){
 char* readName(FILE *fileBin){
     char* name;
     if(!(name = (char *)calloc(1, sizeof(char)*10))){
-        printf("Возникли проблемы с выделением памяти"); }
+        printf("Error memory"); }
     int ifError =  (int) fread(name, sizeof(char)*10, 1, fileBin);
-    printf (" reading name %s\n", name);
     if(ifError == -1){
         printf ("Error with reading name %s\n", name);
+    } else {
+        printf ("Name %s\n", name);
     }
     return name;
 }
 
 Directory* readFromFile(){
+    printf("-------------Start reading damp--------------------\n");
     Directory *root;
     if(!(root = (Directory *)calloc(1, sizeof(Directory)))){
-        printf("Возникли проблемы с выделением памяти"); }
-    FILE *fileBin = (FILE*)malloc(sizeof(FILE*));
+        printf("Error memory"); }
+
+    FILE *fileBin;// = (FILE*)malloc(sizeof(FILE*));
     fileBin = fopen(FILE_NAME, "r");
-    if (fileBin == 0) {
+    if (fileBin == NULL) {
         printf("Error opening fileBin");
     }
     strcpy( root->name, readName(fileBin));
+    if(strcmp(root-> name, "")==0){
+    strcpy( root->name, "root");
+    return root;
+    }
     root->numberOfDirectories = readNumberOfDirectories(fileBin);
     readDirectories(fileBin, root);
     root->numberOfFiles = readNumberOfFiles(fileBin);
@@ -227,7 +259,7 @@ Directory* readFromFile(){
 
 void writeName(FILE *fileBin, char name[10]){
    int ifError = (int) fwrite(name, sizeof(char)*10, 1, fileBin);
-    printf (" name %s\n", name);
+
    if(ifError == -1){
        printf ("Error with writing name %s\n", name);
    }
@@ -245,7 +277,6 @@ int getNumberOfDirectories(Directory root){
 
 void writeNumberOfDirectories(FILE *fileBin, int numberOfDirectories){
     int ifError = (int) fwrite(&numberOfDirectories, sizeof(int), 1, fileBin);
-    printf (" number of Directory %i\n", numberOfDirectories);
     if(ifError == -1){
         printf ("Error with writing number of Directory %i\n", numberOfDirectories);
     }
@@ -254,7 +285,6 @@ void writeNumberOfDirectories(FILE *fileBin, int numberOfDirectories){
 int readNumberOfDirectories(FILE *fileBin){
     int numberOfDirectories;
     int ifError = (int) fread(&numberOfDirectories, sizeof(int), 1, fileBin);
-    printf ("read number of Directory %i\n", numberOfDirectories);
     if(ifError == -1){
         printf ("Error with writing number of Directory %i\n", numberOfDirectories);
     }
@@ -262,10 +292,9 @@ int readNumberOfDirectories(FILE *fileBin){
 }
 
 void readDirectories(FILE *fileBin, Directory* root){
-    printf("number of directories in reading %i\n", root->numberOfDirectories);
     for(int i = 0; i < root->numberOfDirectories; i++){
         if(!(root->directories[i] = (Directory *)calloc(1, sizeof(Directory)))){
-            printf("Возникли проблемы с выделением памяти"); }
+            printf("Error memory"); }
         strcpy( root->directories[i]->name,  readName(fileBin));
         root->directories[i]->numberOfDirectories = readNumberOfDirectories(fileBin);
         readDirectories(fileBin, root->directories[i]);
@@ -277,7 +306,7 @@ void readDirectories(FILE *fileBin, Directory* root){
 void readFiles(FILE *fileBin, Directory* root){
     for(int i = 0; i < root->numberOfFiles; i++){
         if(!(root->files[i] = (File *)calloc(1, sizeof(File)))){
-            printf("Возникли проблемы с выделением памяти"); }
+            printf("Error memory"); }
         strcpy(root->files[i]->name, readName(fileBin));
         strcpy(root->files[i]->data, readData(fileBin));
         root->files[i]->numberOfFiles = readNumberOfFiles(fileBin);
@@ -302,19 +331,16 @@ void readFileTail(FILE *fileBin, File* head) {
     for (int i = 0; i < number; i++) {
         File *file;
         if (!(file = (File *) calloc (1, sizeof (File)))) {
-            printf ("Возникли проблемы с выделением памяти");
+            printf ("Error memory");
         }
         strcpy (file->data, readData(fileBin));
-        //  readData(fileBin, file->data);
         head->next = file;
         head = file;
-      //  file = file->next;
     }
 }
 
 void writeData(FILE *fileBin, char data[10]){
     int ifError = (int) fwrite(data, sizeof(char)*10, 1, fileBin);
-    printf (" data  %s\n", data);
     if(ifError == -1){
         printf ("Error with writing data  %s\n", data);
     }
@@ -323,16 +349,15 @@ void writeData(FILE *fileBin, char data[10]){
 char* readData(FILE *fileBin){
     char* data;
     if(!(data = (char *)calloc(1, sizeof(char)*10))){
-        printf("Возникли проблемы с выделением памяти"); }
+        printf("Error memory"); }
     int ifError =  (int) fread(data, sizeof(char)*10, 1, fileBin);
-    printf (" reading data %s\n", data);
     if(ifError == -1){
         printf ("Error with reading name %s\n", data);
     }
     return  data;
 }
+
 void writeFiles(FILE *fileBin, Directory root){
-    //  printf ("Error with writing data  %s\n", data);
     for(int i = 0; i < root.numberOfFiles; i++){
         writeName(fileBin, root.files[i]->name);
         writeData(fileBin, root.files[i]->data);
@@ -344,24 +369,17 @@ void writeFiles(FILE *fileBin, Directory root){
 
 void writeFileTail(FILE *fileBin, File* file){
     int number = file -> numberOfFiles;
-   // printf ("number of File tail in writinf %i", file->numberOfFiles);
     if(file -> numberOfFiles != 0){
         file = file->next;
         for(int i=0; i < number; i++){
-          //  writeName(fileBin, file->name);
-       //     printf ("4");
             writeData(fileBin, file->data);
-       //     printf ("5");
             file = file->next;
-        //    printf ("6");
         }
     }
 }
 
 int getNumberOfFilesTail(File* file){
     int numberOfFileTail = 0;
-    //ATTENTION
-    //----------ВОТ ЭТОТ ПАГАНЕЦ ДОБАВЛЯЕТ ЕДИНИЦУ
     while (file -> next){
         numberOfFileTail += 1;
         file = file -> next;
@@ -370,23 +388,7 @@ int getNumberOfFilesTail(File* file){
 }
 
 
-
-
-void  makeDirectory();
-void  makeFile();
-void  removeDirectory();
-void  removeFile();
-void  copyFile();
-void  cutFile();
-void  pasteFile();
-void  writeFile();
-void  readFile();
-void  openDirectory();
-void  openDirectoryBack();
-void  showDirectoryList();
-void  showFileList();
-
-const char *root = "root";
+//const char *root = "root";
 const char *to = ">";
 const char *separator = "/";
 char path[1024];
@@ -403,102 +405,149 @@ typedef struct Path{
 } Path;
 
 Path *end;
+Directory *root;
 
-int main() {
+int main(int argc, char* argv[]) {
 
-    char input[1024];
+    char input;
     if (!(end = (Path *) calloc (1, sizeof (Path)))) {
-        printf ("Возникли проблемы с выделением памяти\n");
+        printf ("Error memory\n");
     }
-    Directory *root;
-    root = readFromFile();
-   // strcpy(root->name, "root");
+
+
+    if(!(root = (Directory *)calloc(1, sizeof(Directory)))){
+        printf("Error memory"); }
+    if(argc == 1){
+        if(! (*(root->name) = (char)calloc(1, sizeof(char)))){
+            printf("Error memory");}
+        if(! (FILE_NAME = (char *)calloc(1, sizeof(char)))){
+            printf("Error memory");}
+        strcpy (FILE_NAME, "root.bin");
+        strcpy (root->name, "root");
+    } else if(argc == 2){
+        if(! (FILE_NAME = (char *)calloc(1, sizeof(char)))){
+            printf("Error memory");}
+        strcpy(FILE_NAME, argv[1]);
+        root = readFromFile();
+    } else  printf("Check number of arguments");
+
+ /*   if(argc == 2){
+        if(! (FILE_NAME = (char *)calloc(1, sizeof(char)))){
+            printf("Error memory");}
+            strcpy(FILE_NAME, argv[1]);
+            root = readFromFile();
+    } else {
+        if(! (*root->name = (char *)calloc(1, sizeof(char)))){
+            printf("Error memory");}
+            strcpy (root->name, "root");
+
+    }
+*/
     activDirectory = root;
     end->dir = root;
 
     snprintf(path, sizeof path, "%s", root->name);
     bool running = true;
-    printf("Доступные операции:\n");
-    printf("  создание каталога:        md имя_каталога\n");
-    printf("  создание файла:           mf имя_файла\n");
-    printf("  удаление каталога:        rd имя_каталога\n");
-    printf("  удаление файла:           rf имя_файла\n");
-    printf("  копирование файла:        copy имя_файла\n");
-    printf("  вставить файл:            paste\n");
-    printf("  вырезать файл:            cut имя_файла\n");
-    printf("  запись в файл:            write имя_файла данные\n");
-    printf("  чтение из файла:          read имя_файла\n");
-    printf("  перейти  каталог:         cd путь_каталога\n");
-    printf("  перейти вверх:            cd..\n");
-    printf("  список каталогов:         dir \n");
-    printf("  список файлов:            file \n");
-    printf("  выход:                    exit\n");
+    printf("Operation:\n");
+    printf("  create directory:      md имя_каталога\n");
+    printf("  create file:           mf имя_файла\n");
+    printf("  remove directory:      rd имя_каталога\n");
+    printf("  remove file:           rf имя_файла\n");
+    printf("  copy file:             copy имя_файла\n");
+    printf("  paste file:            paste\n");
+    printf("  cut file:              cut имя_файла\n");
+    printf("  write to file:         write имя_файла данные\n");
+    printf("  read from file:        read имя_файла\n");
+    printf("  goto directory:        cd путь_каталога\n");
+    printf("  save damp:             save имя_файла\n");
+    printf("  goto prev directory:   cd..\n");
+    printf("  list of directory:     dir \n");
+    printf("  exit:                  exit\n");
     while(running){
         printf("%s", path);
         printf("%s", to);
+
         gets(&input);
-        int cases = changeStringToInt(input);
+        int cases = changeStringToInt(&input);
         switch(cases) {
             case MD:
                 makeDirectory();
+                running = true;
                 break;
             case MF:
                 makeFile();
+                running = true;
                 break;
             case RD:
                 removeDirectory();
+                running = true;
                 break;
             case RF:
                 removeFile();
+                running = true;
                 break;
             case COPY:
                 copyFile();
+                running = true;
                 break;
             case CUT:
                 cutFile();
+                running = true;
                 break;
             case PASTE:
                 pasteFile();
+                running = true;
                 break;
             case WRITE:
                 writeFile();
+                running = true;
                 break;
             case READ:
                 readFile();
+                running = true;
                 break;
             case CD:
                 openDirectory();
+                running = true;
                 break;
             case CD_BAK:
                 openDirectoryBack();
+                running = true;
                 break;
             case DIR:
                 showDirectoryList();
+                running = true;
                 break;
-            case FIL:
-                showFileList();
+
+            case SAVE:
+                saveDamp();
+                running = true;
                 break;
             case ERROR:
                 printf("Please check your operation\n");
+                running = true;
                 break;
             case EXIT:
-                writeToFile(*root);
                 running = false;
                 break;
+
+            default: break;
         }
     }
-    float x;
-    scanf ("%f",&x);
+   // float x;
+    //scanf ("%f",&x);
     return 0;
 }
+
+
 
 void copyFile(){
     bool isFileExist = false;
   for(int i = 0; i < 100; i++){
       if (activDirectory->files[i] != NULL) {
-          if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
+          if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
               if (!(copiedFile = (File *) calloc (1, sizeof (File)))) {
-                  printf ("Возникли проблемы с выделением памяти\n");
+                  printf ("Error with memory\n");
               }
               isFileExist = true;
               strcpy(copiedFile->name, activDirectory->files[i]->name);
@@ -515,17 +564,17 @@ void copyFile(){
 }
 
 void pasteFile(){
-    if(copiedFile != NULL){
+    if(strcmp(copiedFile->name, "") !=0){
         for(int i = 0; i < 100; i++){
             if (activDirectory->files[i] == NULL) {
                 if (!(activDirectory->files[i] = (File *) calloc (1, sizeof (File)))) {
-                    printf ("Возникли проблемы с выделением памяти\n");
+                    printf ("Error with memory\n");
                 }
+
                 strcpy(activDirectory->files[i]->name, copiedFile->name);
                 activDirectory->files[i]->next = copiedFile->next;
                 activDirectory->files[i]->previous = copiedFile->previous;
                 strcpy(activDirectory->files[i]->data,copiedFile->data);
-                free(copiedFile);
                 copiedFile=NULL;
                 break;
             }
@@ -537,10 +586,7 @@ void pasteFile(){
         for (int i = 0; i < 100; i++) {
             if (cutFromDirectory->files[i] != NULL) {
                 if (strcmp (cutFromDirectory->files[i]->name, nameOfCatedFile) == 0) {
-                    free (cutFromDirectory->files[i]->name);
-                    free (&cutFromDirectory->files[i]->data);
-                    free (&cutFromDirectory->files[i]->next);
-                    free (&cutFromDirectory->files[i]->previous);
+                   free (cutFromDirectory->files[i]);
                     cutFromDirectory->files[i] = NULL;
                     cutFromDirectory = NULL;
                     break;
@@ -554,9 +600,9 @@ void cutFile(){
     bool isFileExist = false;
     for(int i = 0; i < 100; i++){
         if (activDirectory->files[i] != NULL) {
-            if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
+            if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
                 if (!(copiedFile = (File *) calloc (1, sizeof (File)))) {
-                    printf ("Возникли проблемы с выделением памяти\n");
+                    printf ("Error with memory\n");
                 }
                 isFileExist = true;
                 strcpy(copiedFile->name, activDirectory->files[i]->name);
@@ -565,12 +611,13 @@ void cutFile(){
                 strcpy(copiedFile->data, activDirectory->files[i]->data);
                 strcpy(nameOfCatedFile,  activDirectory->files[i]->name);
                 cutFromDirectory = activDirectory;
+
                 break;
             }
         }
     }
     if(!isFileExist){
-        printf ("File doesn't exist");
+        printf ("File doesn't exist\n");
     }
 }
 
@@ -579,31 +626,40 @@ void writeFile(){
     int globalI=0;
     for (int i = 0; i < 100; i++) {
         if (activDirectory->files[i] != NULL) {
-            if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
+            if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
                 isFileExist = true;
                 File *activ = activDirectory->files[i];
                 while (activ->next != NULL) {
                     activ = activ->next;
                 }
-                for (int k = 0; k < 1024; k++) {
+                char copi;
+                strcpy(&copi, activDirectory->files[i]->name);
 
-                    if (k % 10 == 0) {
-                        File *next;
-                        if (!(next = (File *) calloc (1, sizeof (File)))) {
-                            printf ("Возникли проблемы с выделением памяти\n");
-                        }
-                        activ->next = next;
-                        next->previous = activ;
-                        activ = next;
-                    }
-                    activ->data[k % 10] = data[k];
-                    if (data[k + 1] == NULL) {
-                       for(int index = k; k<0; k--){
-                           data[index] = NULL;
-                       }
-                        break;
-                    }
+                char  *fileExt;
+                strtok_r(&copi, ".", &fileExt);
+                if(isBin(fileExt)){
+                    strcpy (data, toBin(data));
                 }
+
+                        for (int k = 0; k < 1024; k++) {
+
+                            if (k % 10 == 0) {
+                                File *next;
+                                if (!(next = (File *) calloc (1, sizeof (File)))) {
+                                    printf ("Error with memory\n");
+                                }
+                                activ->next = next;
+                                next->previous = activ;
+                                activ = next;
+                            }
+                            activ->data[k % 10] = data[k];
+                            if (data[k + 1] == NULL) {
+                                for(int index = k; k<0; k--){
+                                    data[index] = NULL;
+                                }
+                                break;
+                            }
+                        }
                 break;
             }
         }
@@ -613,12 +669,21 @@ void writeFile(){
         for (int i = 0; i < 100; i++) {
             if (activDirectory->files[i] == NULL) {
                 if (!(activDirectory->files[i] = (File *) calloc (1, sizeof (File)))) {
-                    printf ("Возникли проблемы с выделением памяти\n");
+                    printf ("Error with memory\n");
                 }
-                strcpy (activDirectory->files[i]->name, fileName);
+                strcpy (activDirectory->files[i]->name, &fileName);
                 activDirectory->files[globalI]->next = activDirectory->files[globalI]->previous = NULL;
                 File* activ;
                 activ = activDirectory->files[globalI];
+                char copi;
+                strcpy(&copi, activDirectory->files[i]->name);
+
+                char  *fileExt;
+                strtok_r(&copi, ".", &fileExt);
+                if(isBin(fileExt)){
+                    strcpy (data, toBin(data));
+                }
+
                 for (int j = 0; j<10; j++){
                     if(data[j] == NULL){
                         for(int index = j; j<0; j--){
@@ -633,7 +698,7 @@ void writeFile(){
                     if(k%10 == 0){
                         File* next;
                         if (!(next = (File *) calloc (1, sizeof (File)))) {
-                            printf ("Возникли проблемы с выделением памяти\n");
+                            printf ("Error with memory\n");
                         }
                         activ -> next = next;
                         next -> previous = activ;
@@ -656,11 +721,38 @@ void writeFile(){
 
 }
 
+char* toBin(char* data) {
+    char* result;
+    int* bin;
+    bin = (int*)malloc(sizeof(int));
+    printf("bin  %i\n",(int) sizeof (bin));
+    printf("data  %i\n",(int) sizeof (data));
+    result = (char*)malloc(sizeof(char));
+    printf("result  %i\n",(int) sizeof (result));
+    for (int i = 0; i<(((int) sizeof (data))/2); i++) {
+        bin[i] = data[i];
+    }
+    int v;
+    for (int j = 0; j<((int) sizeof (bin))/2; j++) {
+        v = 128;
+    for (int i = 1; i <= 8; i++) {
+        if(bin[j] >= v){
+            strcpy(&result[8*j -1 + i],"1");
+            bin[j] -= v;
+        } else {
+            strcpy(&result[8*j -1 + i],"0");
+        }
+        v /= 2;
+    }
+}
+    return result;
+}
+
 void readFile(){
     bool isFileDoesntExist = true;
     for (int i = 0; i < 100; i++) {
         if (activDirectory->files[i] != NULL) {
-            if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
+            if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
                 isFileDoesntExist = false;
                 File *activ;
                 activ = activDirectory->files[i];
@@ -681,7 +773,7 @@ void showFileList(){
     bool check = true;
     for (int i = 0; i < 100; i++) {
         if (activDirectory->files[i] != NULL) {
-            printf ("   %s\n", activDirectory->files[i]->name);
+            printf ("         %s\n", activDirectory->files[i]->name);
             check = false;
         }
     }
@@ -694,13 +786,16 @@ void showDirectoryList(){
     bool check = true;
     for (int i = 0; i < 100; i++) {
         if (activDirectory->directories[i] != NULL) {
-            printf ("   %s\n", activDirectory->directories[i]->name);
+            printf ("   <DIR> %s\n", activDirectory->directories[i]->name);
             check = false;
         }
     }
+
     if (check) {
         printf("Directory list is empty\n");
     }
+
+    showFileList ();
 }
 
 void openDirectoryBack(){
@@ -722,43 +817,71 @@ void openDirectoryBack(){
 
         activDirectory = (end->prev)->dir;
         end = end->prev;
-        free (end->next);
+      //  free (&end->next);
         end->next = NULL;
     } else {
-        printf("Current diretory has not parent directory\n");
+        printf("Current directory has not parent directory\n");
     }
 
 }
-void makeDirectory(){
-    for (int i = 0; i < 100; i++){
+void makeDirectory() {
+ //   printf("%s", directoryName);
+    for (int i = 0; i < 100; i++) {
+        if (activDirectory->directories[i] != NULL) {
+            if (strcmp (activDirectory->directories[i]->name, &directoryName) == 0) {
+                printf ("Directory with this name is already exist\n");
+                return;
+            }
+        }
+    }
+    for (int i = 0; i < 100; i++) {
+        if (activDirectory->directories[i] == NULL) {
+            if (!(activDirectory->directories[i] = (Directory *) calloc (1, sizeof (Directory)))) {
+                printf ("Error with memory\n");
+            }
+            if (!(*(activDirectory->directories[i]->name) = (char) calloc (1, sizeof (char)))) {
+                printf ("Error with memory\n");
+            }
+
+            strcpy (activDirectory->directories[i]->name, &directoryName);
+            return;
+            break;
+
+        }
+    }
+}
+
+
+ /*   for (int i = 0; i < 100; i++){
         if(activDirectory->directories[i] == NULL){
             if(!(activDirectory->directories[i] = (Directory *)calloc(1, sizeof(Directory)))){
-                printf("Возникли проблемы с выделением памяти\n");
+                printf("Error with memory\n");
             }
             strcpy(activDirectory->directories[i]->name,directoryName);
             break;
         } else {
             if (strcmp (activDirectory->directories[i]->name, directoryName) == 0) {
-                printf("Директория с этим именем уже существует\n");
+                printf("Directory with this name is already exist\n");
                 break;
             }
         }
     }
 }
-
+*/
 void makeFile() {
     for (int i = 0; i < 100; i++) {
         if (activDirectory->files[i] != NULL) {
-            if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
-                printf ("Файл с этим именем уже существует\n");
-                break;
+            if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
+                printf ("Directory with this name is already exist\n");
+                return;
+
             }
         } else {
             if (!(activDirectory->files[i] = (File *) calloc (1, sizeof (File)))) {
-                printf ("Возникли проблемы с выделением памяти\n");
+                printf ("Error with memory\n");
             }
-            strcpy (activDirectory->files[i]->name, fileName);
-            break;
+            strcpy (activDirectory->files[i]->name, &fileName);
+            return;
         }
     }
 }
@@ -767,10 +890,8 @@ void removeDirectory() {
     bool check = false;
     for (int i = 0; i < 100; i++) {
         if (activDirectory->directories[i] != NULL) {
-            if (strcmp (activDirectory->directories[i]->name, directoryName) == 0) {
+            if (strcmp (activDirectory->directories[i]->name, &directoryName) == 0) {
                 free (activDirectory->directories[i]);
-               // free (activDirectory->directories[i]->directories);
-                //free (activDirectory->directories[i]->files);
                 activDirectory->directories[i] = NULL;
                 check = false;
 
@@ -780,13 +901,14 @@ void removeDirectory() {
             }
         }
     }
-    if(check){ printf ("Директория с этим именем не существует\n");}
+    if(check){ printf ("Directory with this name is already exist\n");}
 }
+
 void removeFile() {
     bool check = false;
     for (int i = 0; i < 100; i++) {
         if (activDirectory->files[i] != NULL) {
-            if (strcmp (activDirectory->files[i]->name, fileName) == 0) {
+            if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
                 free (activDirectory->files[i]);
                 activDirectory->files[i] = NULL;
                 check = false;
@@ -796,20 +918,21 @@ void removeFile() {
             }
         }
     }
-    if(check){ printf ("Файл с этим именем не существует\n");}
+    if(check){ printf ("File with this name is already exist\n");}
 }
 
 void openDirectory(){
     bool  check = true;
     for (int i = 0 ; i < 100; i++){
         if(activDirectory->directories[i] != NULL){
-            if(strcmp(activDirectory->directories[i]->name, directoryName) == 0){
-                snprintf (path, sizeof path, "%s%s%s", path, separator, directoryName);
+            if(strcmp(activDirectory->directories[i]->name, &directoryName) == 0){
+                snprintf (path, sizeof path, "%s%s%s", path, separator, &directoryName);
                 check = false;
                 activDirectory = activDirectory->directories[i];
                 Path *current;
                 if (!(current = (Path *) calloc (1, sizeof (Path)))) {
-                    printf ("Возникли проблемы с выделением памяти\n");
+                    printf ("Error with memory\n");
+                    break;
                 }
                 current -> dir = activDirectory;
                 current -> prev = end;
@@ -826,9 +949,10 @@ void openDirectory(){
 
 int changeStringToInt(char* input){
     char *firstWord, *last;
-    int typeOfFirstWord = 0;
+    int typeOfFirstWord = ERROR;
     firstWord = strtok_r(input, " ", &last);
     if(firstWord != NULL){
+      //  printf("changeStringToInt");
         typeOfFirstWord = getTypeOfFirstWord (firstWord);
         switch(typeOfFirstWord){
             case MD: {
@@ -886,14 +1010,16 @@ int changeStringToInt(char* input){
                     return CD_BAK;
                 } else return ERROR;
             }
-            case FIL: {
-                if(isOnlyCommand(last)){
-                    return FIL;
-                } else return ERROR;
-            }
+
             case DIR: {
                 if(isOnlyCommand(last)){
                     return DIR;
+                } else return ERROR;
+            }
+
+            case SAVE: {
+                if(isFileName(last)){
+                    return SAVE;
                 } else return ERROR;
             }
             case EXIT: {
@@ -920,11 +1046,11 @@ int getTypeOfFirstWord(char* operation){
     char* paste = "paste";
     char* write = "write";
     char* read = "read";
-    char* file = "file";
     char* cd = "cd";
     char* cd_bak = "cd..";
     char* dir = "dir";
     char* exit = "exit";
+    char* save = "save";
 
     if(strcmp(operation, md) == 0){
        return MD;
@@ -948,11 +1074,23 @@ int getTypeOfFirstWord(char* operation){
         return CD;
     }else if(strcmp(operation, cd_bak) == 0) {
         return CD_BAK;
-    }else if(strcmp(operation, file) == 0) {
-        return FIL;
+    } else if (strcmp(operation, save) == 0){
+        return SAVE;
     } else if (strcmp(operation, dir) == 0){
         return DIR;
     } else if (strcmp(operation, exit) == 0){
         return EXIT;
-    } else  return ERROR;
+    } else return ERROR;
+}
+
+void saveDamp(){
+    char  *fileExt;
+    strtok_r(&fileName, ".", &fileExt);
+    if(isBin(fileExt)){
+        char third[512];
+        snprintf(third, sizeof third, "%s%s", &fileName, ".bin");
+        strcpy(FILE_NAME, third);
+        writeToFile(*root);
+    } else printf("Please check file extension!\n");
+
 }
