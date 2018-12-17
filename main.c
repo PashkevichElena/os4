@@ -64,6 +64,10 @@ char fileName;
 char* data;
 
 bool isDirectoryName(char* input){
+    if(input==NULL){
+       printf("Command without dir name\n");
+        return false;
+   }
     char *secondWorld;
     char *dirName;
     dirName = strtok_r(input, " ", &secondWorld);
@@ -74,6 +78,7 @@ bool isDirectoryName(char* input){
     char  *fileExt;
     strtok_r(dirName, ".", &fileExt);
     if (fileExt != NULL) {
+        printf("Your file hasn't extension\n");
         return false;
     }
     strcpy(&directoryName, dirName);
@@ -81,6 +86,10 @@ bool isDirectoryName(char* input){
 }
 
 bool isFileNameForWrite(char *input){
+    if(input==NULL){
+        printf("Command without file name\n");
+        return false;
+    }
     char *secondWorld;
     strtok_r(input, " ", &secondWorld);
     if (secondWorld != NULL) {
@@ -92,6 +101,7 @@ bool isFileNameForWrite(char *input){
     char  *fileExt;
     strtok_r(input, ".", &fileExt);
     if (fileExt != NULL) {
+        printf("Your file hasn't extension\n");
         return false;
     } else return true;
 
@@ -99,8 +109,10 @@ bool isFileNameForWrite(char *input){
 }
 
 bool isFileName(char *input){
-  //  printf("%s", input);
-
+    if(input==NULL){
+        printf("Command without file name\n");
+        return false;
+    }
     char *secondWorld;
     char copi;
     strtok_r(input, " ", &secondWorld);
@@ -129,7 +141,6 @@ bool isFileName(char *input){
     return false;
 }
 
-
 bool isTxt(char* input){
     //  printf("%s", input);'
 
@@ -140,15 +151,11 @@ bool isTxt(char* input){
 
 }
 
-
 bool isBin(char* input){
-
         if(strcmp(input, "bin")==0){
             return true;}
         else return false;
-
 }
-
 
 bool isOnlyCommand(char *input){
     char *secondWorld;
@@ -673,6 +680,8 @@ void writeFile(){
                 }
                 strcpy (activDirectory->files[i]->name, &fileName);
                 activDirectory->files[globalI]->next = activDirectory->files[globalI]->previous = NULL;
+              //  File *next;
+
                 File* activ;
                 activ = activDirectory->files[globalI];
                 char copi;
@@ -691,6 +700,7 @@ void writeFile(){
                         }
                         break;
                     }
+
                     activ->data[j] = data[j];
                 }
 
@@ -725,10 +735,10 @@ char* toBin(char* data) {
     char* result;
     int* bin;
     bin = (int*)malloc(sizeof(int));
-    printf("bin  %i\n",(int) sizeof (bin));
-    printf("data  %i\n",(int) sizeof (data));
+   // printf("bin  %i\n",(int) sizeof (bin));
+  //  printf("data  %i\n",(int) sizeof (data));
     result = (char*)malloc(sizeof(char));
-    printf("result  %i\n",(int) sizeof (result));
+    //printf("result  %i\n",(int) sizeof (result));
     for (int i = 0; i<(((int) sizeof (data))/2); i++) {
         bin[i] = data[i];
     }
@@ -872,7 +882,7 @@ void makeFile() {
     for (int i = 0; i < 100; i++) {
         if (activDirectory->files[i] != NULL) {
             if (strcmp (activDirectory->files[i]->name, &fileName) == 0) {
-                printf ("Directory with this name is already exist\n");
+                printf ("File with this name is already exist\n");
                 return;
 
             }

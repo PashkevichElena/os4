@@ -1,0 +1,26 @@
+Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+Compiler: /cygdrive/c/cygwin64/bin/cc 
+Build flags: 
+Id flags:  
+
+The output was:
+1
+/cygdrive/c/cygwin64/bin/ld: cannot find -ladvapi32
+/cygdrive/c/cygwin64/bin/ld: cannot find -lshell32
+/cygdrive/c/cygwin64/bin/ld: cannot find -luser32
+/cygdrive/c/cygwin64/bin/ld: cannot find -lkernel32
+collect2: error: ld returned 1 exit status
+
+
+Determining if the C compiler works failed with the following output:
+Change Dir: /cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command:"/cygdrive/c/cygwin64/bin/make.exe" "cmTC_d1bb8/fast"
+/cygdrive/c/cygwin64/bin/make -f CMakeFiles/cmTC_d1bb8.dir/build.make CMakeFiles/cmTC_d1bb8.dir/build
+make[1]: Entering directory '/cmake-build-debug/CMakeFiles/CMakeTmp'
+make[1]: /bin/sh: Command not found
+make[1]: *** [CMakeFiles/cmTC_d1bb8.dir/build.make:65: CMakeFiles/cmTC_d1bb8.dir/testCCompiler.c.o] Error 127
+make[1]: Leaving directory '/cmake-build-debug/CMakeFiles/CMakeTmp'
+make: *** [Makefile:121: cmTC_d1bb8/fast] Error 2
+
+
